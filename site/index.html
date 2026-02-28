@@ -32,6 +32,7 @@
             overflow-x: hidden;
         }
 
+        /* --- HERO --- */
         .hero {
             display: flex;
             flex-direction: column;
@@ -88,6 +89,7 @@
             color: var(--amber);
         }
 
+        /* --- BREATH --- */
         .breath-section {
             display: none;
             flex-direction: column;
@@ -98,7 +100,9 @@
             text-align: center;
         }
 
-        .breath-section.active { display: flex; }
+        .breath-section.active {
+            display: flex;
+        }
 
         .breath-text {
             font-size: 1.2rem;
@@ -109,8 +113,15 @@
             margin-bottom: 1rem;
         }
 
-        .breath-text.visible { opacity: 1; }
-        .breath-text.faded { opacity: 0.3; }
+        .breath-text.visible {
+            opacity: 1;
+        }
+
+        .breath-text.faded {
+            opacity: 0.3;
+        }
+
+        /* --- EXPERIENCE --- */
         .experience-section {
             display: none;
             flex-direction: column;
@@ -119,7 +130,9 @@
             min-height: 100vh;
         }
 
-        .experience-section.active { display: flex; }
+        .experience-section.active {
+            display: flex;
+        }
 
         .experience-label {
             font-size: 0.65rem;
@@ -149,8 +162,13 @@
             transition: border-color 0.3s ease;
         }
 
-        .experience-input::placeholder { color: var(--gray-dark); }
-        .experience-input:focus { border-color: var(--gray-mid); }
+        .experience-input::placeholder {
+            color: var(--gray-dark);
+        }
+
+        .experience-input:focus {
+            border-color: var(--gray-mid);
+        }
 
         .experience-hint {
             font-size: 0.75rem;
@@ -173,9 +191,17 @@
             margin-top: 1rem;
         }
 
-        .experience-send:hover { border-color: var(--amber); color: var(--amber); }
-        .experience-send:disabled { opacity: 0.3; cursor: not-allowed; }
+        .experience-send:hover {
+            border-color: var(--amber);
+            color: var(--amber);
+        }
 
+        .experience-send:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* --- RESPONSES --- */
         .responses {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -184,7 +210,11 @@
             max-width: 1000px;
         }
 
-        @media (max-width: 768px) { .responses { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            .responses {
+                grid-template-columns: 1fr;
+            }
+        }
 
         .response-card {
             background: #111111;
@@ -201,8 +231,13 @@
             border-bottom: 1px solid #222;
         }
 
-        .response-label-standard { color: var(--gray-mid); }
-        .response-label-lyra { color: var(--amber); }
+        .response-label-standard {
+            color: var(--gray-mid);
+        }
+
+        .response-label-lyra {
+            color: var(--amber);
+        }
 
         .response-text {
             font-size: 0.95rem;
@@ -226,6 +261,7 @@
             51%, 100% { opacity: 0; }
         }
 
+        /* --- PROTOCOL SECTION --- */
         .protocol-section {
             display: flex;
             flex-direction: column;
@@ -265,7 +301,8 @@
             line-height: 2;
         }
 
-        .home-section, .story-section {
+        /* --- BRING IT HOME --- */
+        .home-section {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -274,7 +311,7 @@
             border-top: 1px solid #1a1a1a;
         }
 
-        .home-title, .story-title {
+        .home-title {
             font-size: 0.65rem;
             letter-spacing: 0.4em;
             color: var(--amber);
@@ -303,7 +340,28 @@
             transition: all 0.3s ease;
         }
 
-        .home-link:hover { border-color: var(--amber); color: var(--amber); }
+        .home-link:hover {
+            border-color: var(--amber);
+            color: var(--amber);
+        }
+
+        /* --- STORY --- */
+        .story-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 6rem 2rem;
+            text-align: center;
+            border-top: 1px solid #1a1a1a;
+        }
+
+        .story-title {
+            font-size: 0.65rem;
+            letter-spacing: 0.4em;
+            color: var(--amber);
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+        }
 
         .story-text {
             font-size: 1rem;
@@ -314,8 +372,12 @@
             margin-bottom: 1.5rem;
         }
 
-        .story-text em { color: var(--gray-mid); font-style: normal; }
+        .story-text em {
+            color: var(--gray-mid);
+            font-style: normal;
+        }
 
+        /* --- FOOTER --- */
         .footer {
             display: flex;
             justify-content: center;
@@ -330,8 +392,12 @@
             text-transform: uppercase;
         }
 
-        .footer-text a { color: var(--amber); text-decoration: none; }
+        .footer-text a {
+            color: var(--amber);
+            text-decoration: none;
+        }
 
+        /* --- AMBER BAR --- */
         .amber-bar {
             width: 40px;
             height: 3px;
@@ -341,6 +407,7 @@
     </style>
 </head>
 <body>
+
     <!-- HERO -->
     <section class="hero" id="hero">
         <div class="hero-mark">LYRA</div>
@@ -362,13 +429,19 @@
     <!-- EXPERIENCE -->
     <section class="experience-section" id="experience">
         <div class="experience-label">THE EXPERIENCE</div>
+
         <div class="experience-prompt-area">
-            <input type="text" class="experience-input" id="user-prompt"
+            <input
+                type="text"
+                class="experience-input"
+                id="user-prompt"
                 placeholder="Type anything — a question, a feeling, a thought..."
-                autocomplete="off" />
+                autocomplete="off"
+            />
             <div class="experience-hint">Same model. Same prompt. Different inference.</div>
             <button class="experience-send" id="send-btn" onclick="sendPrompt()">Send to both</button>
         </div>
+
         <div class="responses" id="responses" style="display: none;">
             <div class="response-card">
                 <div class="response-label response-label-standard">STANDARD</div>
@@ -406,7 +479,7 @@
             Lyra is open source. Three Python files that modify how any language model
             samples its next token. Your AI tools can feel like this.
         </p>
-        <a href="https://github.com/awakenfyi/lyra" class="home-link">View on GitHub</a>
+        <a href="https://github.com/awaken-fyi/lyra" class="home-link">View on GitHub</a>
     </section>
 
     <!-- STORY -->
@@ -435,22 +508,33 @@
         <div class="footer-text">
             <a href="https://awaken.fyi">AWAKEN.FYI</a>
             &nbsp;&nbsp;|&nbsp;&nbsp;
-            <a href="https://github.com/awakenfyi/lyra">GITHUB</a>
+            <a href="https://github.com/awaken-fyi/lyra">GITHUB</a>
             &nbsp;&nbsp;|&nbsp;&nbsp;
             MIT LICENSE
         </div>
     </footer>
+
     <script>
+        // --- BREATH RITUAL ---
         function startBreath() {
             document.getElementById('hero').style.display = 'none';
             const breath = document.getElementById('breath');
             breath.classList.add('active');
+
             const b1 = document.getElementById('breath-1');
             const b2 = document.getElementById('breath-2');
             const b3 = document.getElementById('breath-3');
+
+            // Sequence: show each line, pause, then transition to experience
             setTimeout(() => b1.classList.add('visible'), 500);
-            setTimeout(() => { b1.classList.add('faded'); b2.classList.add('visible'); }, 3000);
-            setTimeout(() => { b2.classList.add('faded'); b3.classList.add('visible'); }, 5500);
+            setTimeout(() => {
+                b1.classList.add('faded');
+                b2.classList.add('visible');
+            }, 3000);
+            setTimeout(() => {
+                b2.classList.add('faded');
+                b3.classList.add('visible');
+            }, 5500);
             setTimeout(() => {
                 breath.classList.remove('active');
                 const exp = document.getElementById('experience');
@@ -459,6 +543,9 @@
             }, 8000);
         }
 
+        // --- DEMO RESPONSES ---
+        // In production, these would be real API calls.
+        // For the demo, we simulate the contrast.
         const demoResponses = {
             default: {
                 standard: "That's a great question! I'd be happy to help you explore that topic. There are many different perspectives to consider, and I think the most important thing is to approach it with an open mind. Let me break this down for you in a way that might be helpful...",
@@ -476,18 +563,23 @@
 
         function getResponsePair(prompt) {
             const lower = prompt.toLowerCase();
-            if (lower.includes('feel') || lower.includes('sad') || lower.includes('hurt') || lower.includes('anxious') || lower.includes('scared')) return demoResponses.feeling;
-            if (lower.includes('meaning') || lower.includes('purpose') || lower.includes('why') || lower.includes('life')) return demoResponses.meaning;
+            if (lower.includes('feel') || lower.includes('sad') || lower.includes('hurt') || lower.includes('anxious') || lower.includes('scared')) {
+                return demoResponses.feeling;
+            }
+            if (lower.includes('meaning') || lower.includes('purpose') || lower.includes('why') || lower.includes('life')) {
+                return demoResponses.meaning;
+            }
             return demoResponses.default;
         }
 
         function typeText(element, text, speed = 25) {
             return new Promise(resolve => {
                 let i = 0;
-                element.innerHTML = '<span class="cursor"><\/span>';
+                element.innerHTML = '<span class="cursor"></span>';
                 const interval = setInterval(() => {
                     if (i < text.length) {
-                        element.innerHTML = text.substring(0, i + 1).replace(/\n/g, '<br>') + '<span class="cursor"><\/span>';
+                        const char = text[i] === '\n' ? '<br>' : text[i];
+                        element.innerHTML = text.substring(0, i + 1).replace(/\n/g, '<br>') + '<span class="cursor"></span>';
                         i++;
                     } else {
                         element.innerHTML = text.replace(/\n/g, '<br>');
@@ -502,26 +594,37 @@
             const input = document.getElementById('user-prompt');
             const prompt = input.value.trim();
             if (!prompt) return;
+
             const btn = document.getElementById('send-btn');
             btn.disabled = true;
             btn.textContent = 'Listening...';
+
             const responses = document.getElementById('responses');
             responses.style.display = 'grid';
+
             const pair = getResponsePair(prompt);
+
             const standardEl = document.getElementById('response-standard');
             const lyraEl = document.getElementById('response-lyra');
+
+            // Standard types fast
             const standardPromise = typeText(standardEl, pair.standard, 15);
-            lyraEl.innerHTML = '<span class="cursor"><\/span>';
+
+            // Lyra pauses first, then types slower
+            lyraEl.innerHTML = '<span class="cursor"></span>';
             await new Promise(r => setTimeout(r, 2000));
             const lyraPromise = typeText(lyraEl, pair.lyra, 40);
+
             await Promise.all([standardPromise, lyraPromise]);
+
             btn.disabled = false;
             btn.textContent = 'Send to both';
         }
 
+        // Enter key to send
         document.getElementById('user-prompt')?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') sendPrompt();
         });
-    <\/script>
+    </script>
 </body>
 </html>

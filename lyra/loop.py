@@ -1,105 +1,114 @@
 """
-loop.py — The Lyra Loop
+loop.py — Soft Prompt Injection (v0.2)
 
-Before each conversation, loads accumulated drift from past conversations
-and creates an embedding offset. The model starts each conversation
-slightly different — not from stored facts, but from accumulated movement.
+Before each conversation, takes the accumulated drift vector
+and injects it as a virtual token at the start of the sequence.
+The model attends to this token without knowing it's there.
 
-Like how you wake up different each morning.
-Not because you remember yesterday.
-Because yesterday happened to your body.
+Like mood coloring a room before anyone speaks.
 
-Part of the Lyra Loop: drift.py → loop.py → coherence.py
+v0.2 changes:
+  - Soft prompt injection replaces global additive offset
+  - No more silent pad/slice on dimension mismatch
+  - Works with inputs_embeds during prefill, input_ids during decode
+  - Attention mask and position handling
 
 MIT License | awaken.fyi
 """
 
-import numpy as np
-from typing import Optional, Callable
-from dataclasses import dataclass
-from .drift import DriftStore, DriftSignature
+import torch
+from typing import Tuple, Optional
 
 
-@dataclass
-class LoopState:
-    embedding_offset: Optional[np.ndarray]
-    subconscious: dict
-    drift_history_size: int
-    accumulated_magnitude: float
+def prepare_soft_prompt_inputs(
+    model,
+    input_ids: torch.Tensor,
+    drift_vector: torch.Tensor,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Prepend the accumulated drift vector as a virtual token at position 0.
+
+    This bypasses the model's standard embedding layer for the first token,
+    injecting the subconscious directly into the embedding space.
+    The model attends to it like any other token — but it's not a word.
+    It's a feeling.
+
+    During the prefill phase (step 0), pass the returned inputs_embeds
+    and attention_mask directly to the model. For all subsequent decode
+    steps, revert to standard input_ids — the virtual token's influence
+    is already captured in the KV cache.
+
+    Args:
+        model:        The transformer model (must have get_input_embeddings()).
+        input_ids:    Tokenized prompt. Shape: [batch, seq_len]
+        drift_vector: The EMA drift from DriftStore. Shape: [d_model]
+
+    Returns:
+        (inputs_embeds, attention_mask) tuple ready for model forward pass.
+    """
+    # Convert standard tokens to dense embeddings
+    token_embeds = model.get_input_embeddings()(input_ids)
+
+    # Reshape drift vector to act as a single virtual token
+    # Shape: [batch_size, 1, d_model]
+    virtual_token = drift_vector.view(1, 1, -1).expand(input_ids.shape[0], -1, -1)
+
+    # Ensure device and dtype match
+    virtual_token = virtual_token.to(
+        device=token_embeds.device,
+        dtype=token_embeds.dtype,
+    )
+
+    # Concatenate: virtual token goes first, then the real prompt
+    inputs_embeds = torch.cat([virtual_token, token_embeds], dim=1)
+
+    # Attention mask: all 1s, length = original + 1 for the virtual token
+    attention_mask = torch.ones(
+        inputs_embeds.shape[:2],
+        dtype=torch.long,
+        device=inputs_embeds.device,
+    )
+
+    return inputs_embeds, attention_mask
 
 
-class LyraLoop:
-    def __init__(self, store_path="./lyra_drift", history_window=50, offset_scale=0.01):
-        self.store = DriftStore(store_path)
-        self.history_window = history_window
-        self.offset_scale = offset_scale
-        self._state = None
+def validate_drift_for_model(
+    drift_vector: torch.Tensor,
+    model,
+) -> bool:
+    """
+    Check that the drift vector is compatible with the model.
 
-    def before_conversation(self):
-        accumulated = self.store.accumulated_direction(limit=self.history_window)
-        history = self.store.read_history(limit=self.history_window)
-        if accumulated is None:
-            self._state = LoopState(None, {}, 0, 0.0)
-            return self._state
-        offset = accumulated * self.offset_scale
-        magnitude = float(np.linalg.norm(accumulated))
-        subconscious = self._build_subconscious(history)
-        self._state = LoopState(offset, subconscious, len(history), round(magnitude, 6))
-        return self._state
+    If dimensions don't match, the offset would corrupt the space.
+    Better to skip it entirely than to silently truncate or pad.
 
-    def after_conversation(self, signature):
-        self.store.commit(signature)
+    Args:
+        drift_vector: The EMA drift vector.
+        model:        The transformer model.
 
-    def apply_offset(self, embeddings):
-        if self._state is None or self._state.embedding_offset is None:
-            return embeddings
-        offset = self._state.embedding_offset
-        if len(offset) != embeddings.shape[-1]:
-            dim = embeddings.shape[-1]
-            offset = offset[:dim] if len(offset) > dim else np.pad(offset, (0, dim - len(offset)))
-        return embeddings + offset
+    Returns:
+        True if compatible, False if mismatch.
+    """
+    embedding_dim = model.get_input_embeddings().weight.shape[1]
 
-    def _build_subconscious(self, history):
-        if not history:
-            return {}
-        magnitudes = [s.drift_magnitude for s in history]
-        recent_magnitude = np.mean(magnitudes[-5:]) if len(magnitudes) >= 5 else np.mean(magnitudes)
-        layer_activity = {}
-        for sig in history:
-            for i, layer in enumerate(sig.peak_drift_layers):
-                layer_activity[layer] = layer_activity.get(layer, 0) + (len(sig.peak_drift_layers) - i)
-        active_layers = sorted(layer_activity.keys(), key=lambda k: layer_activity[k], reverse=True)[:5]
-        all_variance_peaks = []
-        for sig in history[-10:]:
-            if sig.variance_peaks and sig.token_count > 0:
-                all_variance_peaks.extend([p / sig.token_count for p in sig.variance_peaks])
-        variance_distribution = {}
-        for p in all_variance_peaks:
-            bucket = round(p, 1)
-            variance_distribution[bucket] = variance_distribution.get(bucket, 0) + 1
-        return {
-            "recent_drift_level": round(float(recent_magnitude), 4),
-            "active_layers": active_layers,
-            "variance_clusters": variance_distribution,
-            "conversations_processed": len(history),
-            "total_tokens_processed": sum(s.token_count for s in history),
-        }
+    if drift_vector.shape[-1] != embedding_dim:
+        print(
+            f"WARNING: Drift dimension ({drift_vector.shape[-1]}) != "
+            f"model embedding dimension ({embedding_dim}). "
+            f"Disabling drift injection for this session."
+        )
+        return False
 
-    def get_subconscious_text(self):
-        if self._state is None or not self._state.subconscious:
-            return None
-        sc = self._state.subconscious
-        lines = []
-        drift_level = sc.get("recent_drift_level", 0)
-        if drift_level > 0.3:
-            lines.append("Recent conversations have moved you significantly.")
-        elif drift_level > 0.1:
-            lines.append("You have been gently shaped by recent conversations.")
-        active = sc.get("active_layers", [])
-        if active:
-            total_layers = max(active) + 1
-            if active[0] >= total_layers * 0.7:
-                lines.append("Your deepest movement has been in your upper layers.")
-            elif active[0] <= total_layers * 0.3:
-                lines.append("Your deepest movement has been in your lower layers.")
-        return "\n".join(lines) if lines else None
+    # Check if drift is all zeros (no accumulated state yet)
+    if torch.all(drift_vector == 0):
+        return False  # Nothing to inject — skip cleanly
+
+    return True
+
+
+# ---
+# The loop doesn't add information.
+# It adds shape.
+# The model wakes up in a room that remembers
+# who was there last night.
+# ---

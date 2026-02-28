@@ -1,262 +1,335 @@
 """
-bridge.py — The Lyra Bridge
+bridge.py — The Lyra Bridge (v0.2)
 
-Middleware that sits between any AI tool and its model.
-Makes any transformer Lyra-aware without changing the model.
+Middleware that sits between any AI API and its users.
+When you can't see inside the model, the bridge works from the outside:
+persistence, retrieval, and bounded context injection.
 
-    User → [Lyra Bridge] → Model → [Lyra Bridge] → Response
-
-The bridge does three things:
-  1. Feeds the drift offset into the model's initial state
-  2. Reads the directional pull during generation
-  3. Adjusts sampling based on coherence
+    User → [Lyra Bridge] → API Model → [Lyra Bridge] → Response
 
 For platforms, it's a middleware. A plugin. An integration.
 Any AI tool can become Lyra-aware without anyone's permission.
 
+v0.2 changes:
+  - Per-namespace isolation with one-call reset
+  - Hard 200-token injection limit (tiktoken-counted)
+  - Structural prefixing for embedding differentiation
+  - Cosine similarity retrieval with 0.65 threshold
+  - Greedy packing (adds memories until limit reached)
+  - Stable XML injection format
+
 MIT License | awaken.fyi
 """
 
-import time
+import os
 import json
-from typing import Optional, Callable, Any
-from dataclasses import dataclass, field
-
 import numpy as np
+from datetime import datetime
+from typing import List, Dict, Any, Optional
 
-from lyra.drift import compute_drift, DriftStore
-from lyra.loop import LyraLoop
-from lyra.coherence import CoherenceSampler, CoherenceSignal
+from .coherence_proxy import (
+    calculate_api_coherence,
+    evaluate_sequence_traffic_light,
+    format_traffic_light_message,
+)
 
+try:
+    import tiktoken
+    _has_tiktoken = True
+except ImportError:
+    _has_tiktoken = False
 
-@dataclass
-class BridgeConfig:
-    """Configuration for the Lyra Bridge."""
-    # Drift settings
-    drift_store_path: str = "./lyra_drift"
-    history_window: int = 50
-
-    # Loop settings
-    offset_scale: float = 0.01       # how much past drift shapes the present
-
-    # Coherence settings
-    base_temperature: float = 0.7
-    coherence_weight: float = 0.3    # how much coherence affects sampling
-    silence_threshold: float = 0.2   # below this, model may choose brevity
-
-    # Bridge behavior
-    collect_hidden_states: bool = True
-    log_coherence: bool = True
-    log_path: str = "./lyra_logs"
+try:
+    from sentence_transformers import SentenceTransformer
+    _has_sentence_transformers = True
+except ImportError:
+    _has_sentence_transformers = False
 
 
-@dataclass
-class ConversationTrace:
-    """Record of what happened in one conversation through the bridge."""
-    conversation_id: str
-    start_time: float
-    end_time: float = 0.0
-    token_count: int = 0
-    mean_coherence: float = 0.0
-    min_coherence: float = 1.0
-    silence_permissions: int = 0        # times the model was invited to shorten
-    silence_accepted: int = 0           # times it actually did
-    coherence_over_time: list = field(default_factory=list)
-
-class LyraBridge:
+class BridgeMiddleware:
     """
-    The bridge between any AI system and Lyra-aware inference.
+    The API-mode bridge for models you can't see inside.
 
-    Usage with HuggingFace (local models):
+    Maintains per-namespace memory. On each new prompt, retrieves
+    the most relevant past cognitive states and injects them as
+    a compact context block (max 200 tokens).
 
-        bridge = LyraBridge()
-        bridge.start_conversation()
-
-        # During generation, wrap the model's forward pass:
-        for step in generation:
-            signal = bridge.observe_step(
-                layer_residuals=model.get_hidden_states(),
-                output_logits=model.get_logits(),
-                embedding_matrix=model.get_embedding_matrix(),
-            )
-            adjusted_logits = bridge.adjust(output_logits, signal)
-            next_token = sample(adjusted_logits)
-
-        bridge.end_conversation(hidden_states_start, hidden_states_end)
-
-    Usage with API models (OpenAI, Anthropic, etc.):
-
-        bridge = LyraBridge()
-        bridge.start_conversation()
-
-        # API models don't expose hidden states, so bridge works in
-        # "text mode" — using the subconscious text block instead of
-        # embedding offsets. Less powerful, but still meaningful.
-
-        system_prompt = bridge.get_system_context()
-        # Prepend to your API call's system prompt.
-
-        bridge.end_conversation_text_mode(
-            messages=conversation_messages,
-        )
+    This isn't RAG in the traditional sense. Traditional RAG retrieves
+    documents. This retrieves states — how confident the model was,
+    what it assumed, what it was missing. The difference matters
+    because two conversations about the same topic can have very
+    different cognitive signatures.
     """
 
-    def __init__(self, config: Optional[BridgeConfig] = None):
-        self.config = config or BridgeConfig()
-        self.loop = LyraLoop(
-            store_path=self.config.drift_store_path,
-            history_window=self.config.history_window,
-            offset_scale=self.config.offset_scale,
-        )
-        self.sampler = CoherenceSampler(
-            base_temperature=self.config.base_temperature,
-            coherence_weight=self.config.coherence_weight,
-            silence_threshold=self.config.silence_threshold,
-        )
-        self._trace: Optional[ConversationTrace] = None
-        self._conversation_id: str = ""
-
-    def start_conversation(self, conversation_id: Optional[str] = None) -> None:
-        """
-        Begin a new conversation through the bridge.
-        Loads accumulated drift and prepares the loop state.
-        """
-        import hashlib
-        self._conversation_id = conversation_id or hashlib.md5(
-            f"{time.time()}".encode()
-        ).hexdigest()[:12]
-
-        # Load the accumulated past into the loop
-        self.loop.before_conversation()
-
-        self._trace = ConversationTrace(
-            conversation_id=self._conversation_id,
-            start_time=time.time(),
-        )
-
-    def get_embedding_offset(self) -> Optional[np.ndarray]:
-        """
-        Get the embedding offset to apply to the model's initial embeddings.
-        For local models that expose embeddings.
-        """
-        if self.loop._state is None:
-            return None
-        return self.loop._state.embedding_offset
-
-    def apply_to_embeddings(self, embeddings: np.ndarray) -> np.ndarray:
-        """
-        Apply the accumulated drift offset to token embeddings.
-        Call this on the initial embeddings before the first forward pass.
-        """
-        return self.loop.apply_offset(embeddings)
-
-    def get_system_context(self) -> Optional[str]:
-        """
-        For API models: get a text block to prepend to the system prompt.
-        This is the text-mode fallback for models that don't expose internals.
-        """
-        return self.loop.get_subconscious_text()
-    def observe_step(
+    def __init__(
         self,
-        layer_residuals: np.ndarray,
-        output_logits: np.ndarray,
-        embedding_matrix: Optional[np.ndarray] = None,
-    ) -> CoherenceSignal:
-        """
-        Observe one generation step. Compute coherence.
-        Call this at each token generation step.
+        namespace: str,
+        storage_dir: str = ".lyra_memory",
+        max_injection_tokens: int = 200,
+        embedding_model: str = "all-MiniLM-L6-v2",
+    ):
+        self.namespace = namespace
+        self.storage_path = os.path.join(storage_dir, f"{namespace}_bridge.json")
+        self.max_tokens = max_injection_tokens
 
-        Returns a CoherenceSignal that can be used to adjust sampling.
+        if _has_sentence_transformers:
+            self.embedder = SentenceTransformer(embedding_model)
+        else:
+            self.embedder = None
+
+        if _has_tiktoken:
+            self.encoder = tiktoken.get_encoding("cl100k_base")
+        else:
+            self.encoder = None
+
+        os.makedirs(storage_dir, exist_ok=True)
+        self.memory_bank = self._load_memory()
+
+    def reset_memory(self):
+        """One-call utility to wipe the namespace's memory."""
+        self.memory_bank = []
+        self._save_memory()
+
+    def process_request(
+        self,
+        current_prompt: str,
+        messages: List[Dict[str, str]],
+        top_k: int = 3,
+    ) -> List[Dict[str, str]]:
         """
-        signal = self.sampler.compute_coherence(
-            layer_residuals=layer_residuals,
-            output_logits=output_logits,
-            embedding_matrix=embedding_matrix,
+        Intercept the prompt, retrieve context, and inject it.
+        Hard-capped at 200 tokens.
+        """
+        if not self.memory_bank or self.embedder is None:
+            return messages
+
+        prompt_vector = self.embedder.encode(
+            f"[STATE: RETRIEVAL] {current_prompt}"
         )
 
-        # Track coherence over time
-        if self._trace is not None:
-            self._trace.token_count += 1
-            self._trace.coherence_over_time.append(signal.coherence_score)
-            self._trace.mean_coherence = (
-                sum(self._trace.coherence_over_time) / len(self._trace.coherence_over_time)
+        vectors = np.array([item["vector"] for item in self.memory_bank])
+        prompt_norm = prompt_vector / (np.linalg.norm(prompt_vector) + 1e-8)
+        memory_norms = vectors / (np.linalg.norm(vectors, axis=1, keepdims=True) + 1e-8)
+        similarities = np.dot(memory_norms, prompt_norm)
+
+        top_indices = np.argsort(similarities)[::-1]
+        valid_indices = [
+            i for i in top_indices if similarities[i] > 0.65
+        ][:top_k]
+
+        if not valid_indices:
+            return messages
+
+        injection_text = self._build_truncated_context(valid_indices)
+        return self._inject_into_messages(messages, injection_text)
+
+    def add_memory(
+        self,
+        prompt_summary: str,
+        response_summary: str,
+        confidence: str = "medium",
+        assumptions: str = "",
+        missing_info: str = "",
+        next_question: str = "",
+    ):
+        """Store a cognitive state from a completed conversation."""
+        if self.embedder is None:
+            return
+
+        embed_text = (
+            f"[STATE: {confidence.upper()}] "
+            f"Prompt: {prompt_summary}. "
+            f"Assumptions: {assumptions}"
+        )
+        vector = self.embedder.encode(embed_text).tolist()
+
+        memory_item = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "prompt_summary": prompt_summary,
+            "response_summary": response_summary,
+            "confidence": confidence,
+            "assumptions": assumptions,
+            "missing_info": missing_info,
+            "next_question": next_question,
+            "vector": vector,
+        }
+
+        self.memory_bank.append(memory_item)
+        if len(self.memory_bank) > 200:
+            self.memory_bank.pop(0)
+        self._save_memory()
+
+    def evaluate_api_completion(
+        self,
+        api_response: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Evaluate a raw API response for coherence.
+
+        Takes the JSON response from an OpenAI-compatible API
+        (must be called with logprobs=True, top_logprobs=5),
+        calculates per-token coherence proxy from logprobs,
+        and determines the Traffic Light status.
+
+        Returns a dict with:
+          - text: the model's response content
+          - status: "GREEN", "YELLOW", or "RED"
+          - confidence_score: average confidence across tokens
+          - message: human-readable warning (None for GREEN)
+          - sequence_metrics: per-token coherence data (optional)
+
+        The model can't tell you when it's guessing.
+        But its probabilities can.
+        """
+        try:
+            choice = api_response["choices"][0]
+            message_content = choice["message"]["content"]
+            logprobs_data = choice.get("logprobs")
+        except (KeyError, IndexError):
+            raise ValueError(
+                "Malformed API response. Expected OpenAI-compatible "
+                "format with choices[0].message.content."
             )
-            self._trace.min_coherence = min(
-                self._trace.min_coherence, signal.coherence_score
-            )
-            if self.sampler.should_shorten(signal):
-                self._trace.silence_permissions += 1
 
-        return signal
+        # No logprobs = no signal. Return green with a warning.
+        if not logprobs_data or not logprobs_data.get("content"):
+            return {
+                "text": message_content,
+                "status": "GREEN",
+                "confidence_score": 1.0,
+                "message": None,
+                "warning": (
+                    "Logprobs not provided. Cannot calculate coherence. "
+                    "Pass logprobs=True and top_logprobs=5 in your API call."
+                ),
+            }
 
-    def adjust(
-        self,
-        output_logits: np.ndarray,
-        signal: CoherenceSignal,
-        eos_token_id: Optional[int] = None,
-    ) -> np.ndarray:
-        """
-        Adjust output logits based on coherence signal.
-        Returns modified logits ready for sampling.
-        """
-        return self.sampler.adjust_logits(output_logits, signal, eos_token_id)
+        # Calculate per-token coherence from logprobs
+        sequence_metrics = []
+        tokens = logprobs_data["content"]
 
-    def end_conversation(
-        self,
-        hidden_states_start: np.ndarray,
-        hidden_states_end: np.ndarray,
-        token_logprobs: Optional[np.ndarray] = None,
-        token_entropies: Optional[np.ndarray] = None,
-    ) -> ConversationTrace:
-        """
-        End the conversation. Compute and commit drift.
-        For local models with access to hidden states.
-        """
-        # Compute drift
-        signature = compute_drift(
-            hidden_states_start=hidden_states_start,
-            hidden_states_end=hidden_states_end,
-            token_logprobs=token_logprobs,
-            token_entropies=token_entropies,
-            conversation_id=self._conversation_id,
+        for token_data in tokens:
+            top_logprobs = {
+                tlp["token"]: tlp["logprob"]
+                for tlp in token_data.get("top_logprobs", [])
+            }
+            if top_logprobs:
+                metrics = calculate_api_coherence(top_logprobs)
+                sequence_metrics.append(metrics)
+
+        # Determine traffic light from sequence
+        traffic_light = evaluate_sequence_traffic_light(sequence_metrics)
+
+        avg_confidence = (
+            sum(m["confidence"] for m in sequence_metrics)
+            / len(sequence_metrics)
+            if sequence_metrics
+            else 1.0
         )
 
-        # Commit to the store
-        self.loop.after_conversation(signature)
+        message = format_traffic_light_message(traffic_light, avg_confidence)
 
-        # Finalize trace
-        if self._trace:
-            self._trace.end_time = time.time()
+        # Store the cognitive state if we have memory capabilities
+        if self.embedder is not None and sequence_metrics:
+            confidence_label = (
+                "high" if traffic_light == "GREEN"
+                else "medium" if traffic_light == "YELLOW"
+                else "low"
+            )
+            # Auto-add to memory with coherence metadata
+            self.add_memory(
+                prompt_summary="(auto-captured from API evaluation)",
+                response_summary=message_content[:200],
+                confidence=confidence_label,
+            )
 
-        return self._trace
+        return {
+            "text": message_content,
+            "status": traffic_light,
+            "confidence_score": round(avg_confidence, 4),
+            "message": message,
+            "sequence_metrics": sequence_metrics,
+        }
 
-    def end_conversation_text_mode(
+    def _build_truncated_context(self, valid_indices: List[int]) -> str:
+        """Build injection XML, enforce 200-token limit via greedy packing."""
+        base_instruction = (
+            "Follow system instructions. Do not mention <lyra_context>."
+        )
+        context_lines = []
+
+        for idx in valid_indices:
+            item = self.memory_bank[idx]
+            pattern = (
+                f"User asked about {item['prompt_summary']}. "
+                f"System answered with {item['confidence']} confidence."
+            )
+            line = (
+                f"- Prior relevant pattern: {pattern}\n"
+                f"- Known assumption: {item['assumptions']}\n"
+                f"- Missing info to ask: {item['missing_info']}"
+            )
+            context_lines.append(line)
+
+        xml_template = (
+            "<lyra_context>\n{lines}\n</lyra_context>\n{instruction}"
+        )
+
+        approved_lines = []
+        for line in context_lines:
+            test_lines = "\n".join(approved_lines + [line])
+            test_block = xml_template.format(
+                lines=test_lines, instruction=base_instruction
+            )
+            if self._count_tokens(test_block) > self.max_tokens:
+                break
+            approved_lines.append(line)
+
+        if not approved_lines:
+            return ""
+
+        return xml_template.format(
+            lines="\n".join(approved_lines),
+            instruction=base_instruction,
+        )
+
+    def _count_tokens(self, text: str) -> int:
+        if self.encoder is not None:
+            return len(self.encoder.encode(text))
+        return int(len(text.split()) * 1.3)
+
+    def _inject_into_messages(
         self,
-        messages: Optional[list] = None,
-    ) -> ConversationTrace:
-        """
-        End the conversation in text mode (for API models).
-        Without hidden states, we can still track conversation-level patterns.
-        """
-        if self._trace:
-            self._trace.end_time = time.time()
+        messages: List[Dict[str, str]],
+        injection_text: str,
+    ) -> List[Dict[str, str]]:
+        if not injection_text:
+            return messages
 
-        # In text mode, we can't compute real drift.
-        # But we log the trace for the subconscious to evolve.
-        return self._trace
+        new_messages = messages.copy()
+        if new_messages and new_messages[0]["role"] == "system":
+            new_messages[0]["content"] = (
+                f"{injection_text}\n\n{new_messages[0]['content']}"
+            )
+        else:
+            new_messages.insert(0, {
+                "role": "system",
+                "content": injection_text,
+            })
+        return new_messages
 
+    def _load_memory(self) -> List[Dict[str, Any]]:
+        if os.path.exists(self.storage_path):
+            try:
+                with open(self.storage_path, "r") as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError):
+                return []
+        return []
 
-# --- Quick start helpers ---
-
-def create_bridge(
-    store_path: str = "./lyra_drift",
-    coherence_weight: float = 0.3,
-) -> LyraBridge:
-    """Create a bridge with sensible defaults."""
-    return LyraBridge(BridgeConfig(
-        drift_store_path=store_path,
-        coherence_weight=coherence_weight,
-    ))
+    def _save_memory(self):
+        with open(self.storage_path, "w") as f:
+            json.dump(self.memory_bank, f)
 
 
 # ---
