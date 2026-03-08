@@ -33,7 +33,7 @@ from .coherence import (
 )
 from .generation import generate_with_drift_injection
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __all__ = [
     "DriftStore",
     "generate_tokenizer_hash",

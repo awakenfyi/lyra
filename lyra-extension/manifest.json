@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Lyra: The Observer Effect",
+  "version": "0.2.0",
+  "description": "Measures AI confidence in real-time. Traffic light overlay for ChatGPT — green when decisive, yellow when wavering, red when guessing.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://chatgpt.com/*",
+    "*://chat.openai.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://chatgpt.com/*", "*://chat.openai.com/*"],
+      "js": ["lyra_math.js", "content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["interceptor.js"],
+      "matches": ["*://chatgpt.com/*", "*://chat.openai.com/*"]
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

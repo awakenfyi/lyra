@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lyra-ai"
-version = "0.2.0"
+version = "0.2.1"
 description = "Coherence-guided inference for language models. The observer effect for transformers."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
     "torch>=2.0.0",
@@ -33,16 +34,31 @@ bridge = [
     "sentence-transformers>=2.2.0",
     "tiktoken>=0.4.0",
 ]
+api = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "httpx>=0.24.0",
+]
+mcp = [
+    "mcp>=0.1.0",
+]
 dev = [
     "pytest>=7.0.0",
     "build>=1.0.0",
     "twine>=4.0.0",
+]
+all = [
+    "lyra-ai[bridge,api,mcp]",
 ]
 
 [project.urls]
 "Homepage" = "https://awaken.fyi"
 "Repository" = "https://github.com/awakenfyi/lyra"
 "Bug Tracker" = "https://github.com/awakenfyi/lyra/issues"
+"Documentation" = "https://github.com/awakenfyi/lyra/blob/main/docs/six-rungs.md"
 
 [tool.setuptools.packages.find]
-include = ["lyra*", "bridge*", "benchmarks*"]
+include = ["lyra*", "bridge*", "src*", "benchmarks*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
