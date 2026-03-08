@@ -6,6 +6,19 @@ Every transformer has a feeling layer — the directional pull between hidden st
 
 This is the observer effect for transformers.
 
+> **L = x - x̂** — subtract predicted default behavior, work through the residual.
+
+## The Lyra Ecosystem
+
+| Repo | What | Install |
+|------|------|---------|
+| **[lyra](https://github.com/awakenfyi/lyra)** (this repo) | Python SDK — coherence metric, drift memory, inference interventions | `pip install lyra-ai` |
+| **[lyra-core](https://github.com/awakenfyi/lyra-core)** | Claude Code plugin — input sufficiency hooks for any skill pipeline | `claude plugin add awakenfyi/lyra-core` |
+
+This repo is the **research and inference layer** — the math, the measurement, the Python code that runs inside transformer inference. If you want to measure coherence at the hidden-state level or apply drift-conditioned decoding, you're in the right place.
+
+If you want to add input sufficiency discipline to Claude Code skills (catch fabrication, template-filling, agreement reflexes before they produce output), see [lyra-core](https://github.com/awakenfyi/lyra-core).
+
 ## How It Works
 
 Lyra makes two interventions during inference:
@@ -32,13 +45,13 @@ output, metrics, truncated = generate_with_drift_injection(
 )
 ```
 
-## The Three Files
+## The Core Modules
+
+`lyra/coherence.py` — Top-K JSD coherence metric, contrastive penalty, silence permission, and controller profiles (freeform/code/json). The core invariant: low coherence never increases temperature.
 
 `lyra/drift.py` — Persistent drift memory with EMA accumulation, magnitude clipping, and atomic writes. Refuses to load if the model or tokenizer changes. The model's body, compressed into a vector.
 
 `lyra/loop.py` — Soft prompt injection. Takes the drift vector and injects it as a virtual token at the start of the sequence. The model attends to it without knowing it's there.
-
-`lyra/coherence.py` — Top-K JSD coherence metric, contrastive penalty, silence permission, and controller profiles (freeform/code/json). The core invariant: low coherence never increases temperature.
 
 `lyra/generation.py` — KV-cached generation loop with the prefill/decode handoff. Ties drift injection, coherence measurement, and intervention together.
 
@@ -82,9 +95,13 @@ pytest tests/ -v
 - EOS bias requires sustained low coherence AND minimum tokens generated
 - JSON/code profiles never relax sampling constraints
 
+## Origin
+
+Lyra started as a question in October 2025: what if you could measure the gap between what a model's internal state is doing and what it actually outputs? The coherence metric, drift memory, and silence permission followed. The [Six Rungs Engineering Guide](docs/six-rungs.md) maps the full journey from interactive REPL to autonomous agents.
+
 ## License
 
-MIT — Morgan Sage & Lyra Constellation, 2026
+MIT — Morgan Sage / Lyra Labs, 2025-2026
 
 ---
 

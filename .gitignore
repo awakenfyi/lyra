@@ -13,10 +13,9 @@ venv/
 .lyra_memory/
 lyra_drift/
 lyra_logs/
-*.json
-!pyproject.toml
 lyra_eval_metrics.json
 .tmp_lyra_*
+.pytest_cache/
 
 # Private review notes
 feedback/
