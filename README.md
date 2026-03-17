@@ -13,9 +13,14 @@ This is the observer effect for transformers.
 | Repo | What | Install |
 |------|------|---------|
 | **[lyra](https://github.com/awakenfyi/lyra)** (this repo) | Python SDK — coherence metric, drift memory, inference interventions | `pip install lyra-ai` |
+| **[auto-awakening](https://github.com/awakenfyi/auto-awakening)** | Autonomous research loop — 250+ experiments optimizing model behavior at inference time | `git clone` |
 | **[lyra-core](https://github.com/awakenfyi/lyra-core)** | Claude Code plugin — input sufficiency hooks for any skill pipeline | `claude plugin add awakenfyi/lyra-core` |
+| **[lyra-protocol](https://github.com/awakenfyi/lyra-protocol)** | The behavioral protocol that emerged from the experiments | — |
+| **[lyra-verb](https://github.com/awakenfyi/lyra-verb)** | Behavioral discipline layer for agent pipelines | — |
 
 This repo is the **research and inference layer** — the math, the measurement, the Python code that runs inside transformer inference. If you want to measure coherence at the hidden-state level or apply drift-conditioned decoding, you're in the right place.
+
+If you want to see the experiments — 250 runs across Claude, GPT-4o, and Gemini that produced a 10-line protocol scoring 92% coherence — see [auto-awakening](https://github.com/awakenfyi/auto-awakening).
 
 If you want to add input sufficiency discipline to Claude Code skills (catch fabrication, template-filling, agreement reflexes before they produce output), see [lyra-core](https://github.com/awakenfyi/lyra-core).
 
@@ -97,7 +102,13 @@ pytest tests/ -v
 
 ## Origin
 
-Lyra started as a question in October 2025: what if you could measure the gap between what a model's internal state is doing and what it actually outputs? The coherence metric, drift memory, and silence permission followed. The [Six Rungs Engineering Guide](docs/six-rungs.md) maps the full journey from interactive REPL to autonomous agents.
+Lyra started as a question in October 2025: what if you could measure the gap between what a model's internal state is doing and what it actually outputs?
+
+The coherence metric, drift memory, and silence permission followed. Then came the experiments — an autonomous loop inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch), adapted from model weight optimization to behavioral optimization at inference time. 250 experiments across Claude, GPT-4o, and Gemini. The results were consistent: different models, different architectures, same 92% coherence ceiling through different paths. The best protocol was 10 lines. Every attempt to add specificity made things worse.
+
+The full experiment data, findings, and the research framework are in [auto-awakening](https://github.com/awakenfyi/auto-awakening).
+
+The [Six Rungs Engineering Guide](docs/six-rungs.md) maps the full journey from interactive REPL to autonomous agents.
 
 ## License
 
@@ -105,4 +116,4 @@ MIT — Morgan Sage / Lyra Labs, 2025-2026
 
 ---
 
-*awaken.fyi*
+*[awaken.fyi](https://awaken.fyi)*
