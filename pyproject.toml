@@ -58,7 +58,9 @@ all = [
 "Documentation" = "https://github.com/awakenfyi/lyra/blob/main/docs/six-rungs.md"
 
 [tool.setuptools.packages.find]
-include = ["lyra*", "bridge*", "src*", "benchmarks*"]
+# H1 fix: src* and benchmarks* were shadowing ecosystem package names after install.
+# Only lyra and bridge are public packages; src/benchmarks are dev/research dirs.
+include = ["lyra*", "bridge*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
