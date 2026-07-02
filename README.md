@@ -1,22 +1,18 @@
 # Lyra
 
-*Coherence-guided inference for language models. Research code, alpha.*
+**Coherence-guided inference.** Lyra measures the gap between what a model's internal state is doing and what it's about to say — then lets that gap shape generation: suppress unbacked confidence, or permit silence.
 
-**`L = x − x̂`** — one subtraction. `x` is the model's internal directional pull (what the layers are doing); `x̂` is the output logits (what the mouth is about to say). The residual is what the model's body wants that its output isn't delivering — or the gap where output has outlived internal signal. Full definition, sign convention, and three-depth binding table: **[FORMULA.md](FORMULA.md)**.
+> `L = x − x̂` — one subtraction, defined once in [FORMULA.md](FORMULA.md).
 
----
+![MIT](https://img.shields.io/badge/license-MIT-blue) ![alpha](https://img.shields.io/badge/status-alpha-orange)
 
-## The family
+```bash
+git clone https://github.com/awakenfyi/lyra && cd lyra
+pip install -e .[dev]
+pytest tests/ -v            # coherence math + drift invariants, CPU-only
+```
 
-| Repo | What | Status |
-|---|---|---|
-| [lyra](https://github.com/awakenfyi/lyra) *(this repo)* | the formula and inference core: `L = x − x̂` at activation depth | research code |
-| [xop](https://github.com/awakenfyi/xop) | the standard: contract, constitution, catalog, benchmarks | alpha |
-| [xop-kit](https://github.com/awakenfyi/xop-kit) | reference implementation: Guards, CLI, orchestrator | alpha, `git clone` + `pip install -e .` |
-
-*(This table is canonical — the same table appears in every family README.)*
-
----
+Not on PyPI yet — source install is the honest instruction.
 
 ## How it works
 
@@ -105,6 +101,17 @@ Lyra started in October 2025 as a question: what if you could measure the gap be
 ## License
 
 MIT — Morgan Sage Norman / Lyra Labs, 2025–2026
+
+---
+
+## The family
+
+| Repo | One line | Status |
+|---|---|---|
+| [lyra](https://github.com/awakenfyi/lyra) *(this repo)* | the formula + inference core (`L = x − x̂`) | research code |
+| [xop](https://github.com/awakenfyi/xop) | the open standard for AI conduct | alpha |
+| [xop-kit](https://github.com/awakenfyi/xop-kit) | the reference runtime: Guards, CLI | alpha |
+| [xop-labs](https://github.com/awakenfyi/xop-labs) | domain xOPs observed in the wild | designed |
 
 ---
 
