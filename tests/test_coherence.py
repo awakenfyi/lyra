@@ -4,6 +4,7 @@ Tests for lyra/coherence.py — JSD normalization and controller invariants.
 
 import pytest
 import torch
+import torch.nn.functional as F
 from lyra.coherence import (
     calculate_topk_coherence,
     CoherenceTracker,
@@ -134,4 +135,69 @@ def test_eos_bias_requires_min_tokens():
     )
     assert action.eos_logit_bias == 0.0, (
         "EOS bias activated before min_tokens_for_eos"
+    )
+
+
+def test_temperature_divide_sharpens_distribution():
+    """C1 fix: dividing logits by multiplier < 1 must decrease entropy.
+
+    multiplier=0.95 means temperature=0.95 → sharper distribution.
+    The old code multiplied (logits * 0.95) which flattened instead.
+    Dividing (logits / 0.95) is equivalent to temperature scaling at T=0.95.
+    """
+    torch.manual_seed(42)
+    logits = torch.randn(1000)
+
+    def entropy(l):
+        p = F.softmax(l, dim=-1)
+        return -(p * torch.log2(p + 1e-10)).sum().item()
+
+    multiplier = 0.95  # "mild commit" — should sharpen, not flatten
+
+    entropy_before = entropy(logits)
+    entropy_after_divide = entropy(logits / multiplier)
+    entropy_after_multiply = entropy(logits * multiplier)
+
+    assert entropy_after_divide < entropy_before, (
+        f"Dividing by {multiplier} should decrease entropy "
+        f"({entropy_before:.4f} → {entropy_after_divide:.4f})"
+    )
+    assert entropy_after_multiply > entropy_before, (
+        f"Multiplying by {multiplier} increases entropy (the old bug): "
+        f"({entropy_before:.4f} → {entropy_after_multiply:.4f})"
+    )
+
+
+def test_topk_union_includes_pull_tokens():
+    """H2 fix: union top-K must include tokens preferred by pull even if
+    absent from the mouth's top-K.
+
+    A token with high pull probability but low output probability is invisible
+    when top-K is selected from output logits alone. The union fix makes it
+    visible so suppressed-stance divergence is measured correctly.
+    """
+    vocab = 1000
+    k = 10
+
+    # Pull strongly prefers token 0; output strongly prefers token 999.
+    pull_logits = torch.zeros(vocab)
+    pull_logits[0] = 100.0
+
+    out_logits = torch.zeros(vocab)
+    out_logits[999] = 100.0
+
+    # Mouth-only top-K: token 0 (pull's choice) is invisible
+    _, mouth_top = torch.topk(out_logits, k)
+    assert 0 not in mouth_top.tolist(), "Setup error: token 0 should not be in mouth top-K"
+
+    # Union top-K: both tokens visible
+    _, pull_top = torch.topk(pull_logits, k)
+    union = torch.unique(torch.cat([mouth_top, pull_top]))
+    assert 0 in union.tolist(), "Token 0 (pull's choice) must appear in union top-K"
+    assert 999 in union.tolist(), "Token 999 (mouth's choice) must appear in union top-K"
+
+    # Coherence measured on union should be low (they disagree maximally)
+    coh = calculate_topk_coherence(pull_logits, out_logits, k=k)
+    assert coh.item() < 0.5, (
+        f"Maximally opposing distributions should have low coherence, got {coh.item():.4f}"
     )

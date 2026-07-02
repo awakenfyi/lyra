@@ -155,7 +155,13 @@ def generate_with_drift_injection(
 
         # The pull: what the body is doing
         delta_h = h_next - h_current
-        pull_logits = model.lm_head(delta_h)
+        # Apply final RMSNorm before projecting — hidden states are only
+        # calibrated for lm_head after this norm. Skipping it puts pull
+        # on a different scale than output logits and inflates measured
+        # divergence for reasons unrelated to coherence (H3 fix).
+        _final_norm = getattr(getattr(model, "model", None), "norm", None)
+        delta_h_normed = _final_norm(delta_h) if _final_norm is not None else delta_h
+        pull_logits = model.lm_head(delta_h_normed)
 
         # Measure coherence
         coherence = calculate_topk_coherence(
@@ -180,8 +186,10 @@ def generate_with_drift_injection(
         if action.eos_logit_bias > 0:
             logits[:, eos_token_id] += action.eos_logit_bias
 
-        # Apply temperature
-        logits = logits * action.temperature_multiplier
+        # Apply temperature — divide by multiplier to sharpen (multiplier < 1
+        # means lower temperature = sharper distribution). C1 fix: multiplying
+        # flattened the distribution, inverting the stated invariant.
+        logits = logits / action.temperature_multiplier
 
         # Compute metrics for logging
         probs = F.softmax(logits, dim=-1)

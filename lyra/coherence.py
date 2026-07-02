@@ -84,12 +84,17 @@ def calculate_topk_coherence(
     Returns:
         Coherence score in [0, 1]. Scalar tensor.
     """
-    # Identify the top K tokens the model is actively trying to output
-    _, top_indices = torch.topk(out_logits, k, dim=-1)
+    # Union top-K from both distributions. Taking only the mouth's top-K is
+    # blind in exactly the suppressed-stance direction the formula needs to
+    # see — tokens the body wants but the mouth has suppressed sit outside
+    # the window entirely. H2 fix: union both top-Ks before renormalizing.
+    _, out_top_idx = torch.topk(out_logits, k)
+    _, pull_top_idx = torch.topk(pull_logits, k)
+    top_indices = torch.unique(torch.cat([out_top_idx, pull_top_idx]))
 
-    # Gather raw logits for these specific tokens from both distributions
-    out_top_logits = torch.gather(out_logits, -1, top_indices)
-    pull_top_logits = torch.gather(pull_logits, -1, top_indices)
+    # Gather raw logits for the union support from both distributions
+    out_top_logits = out_logits[top_indices]
+    pull_top_logits = pull_logits[top_indices]
 
     # Convert to probabilities, re-normalize strictly over K-dimensional subspace
     eps = 1e-8
@@ -116,6 +121,7 @@ def compute_pull(
     layer_idx: int,
     lm_head: torch.nn.Module,
     output_logits: torch.Tensor,
+    final_norm: Optional[torch.nn.Module] = None,
 ) -> tuple:
     """
     Extract the pull vector and compute coherence.
@@ -128,6 +134,9 @@ def compute_pull(
         layer_idx:      Which layer pair to measure. Recommend final 20%.
         lm_head:        The model's unembedding / output projection layer.
         output_logits:  The model's final output logits. Shape: [batch, vocab]
+        final_norm:     The model's final RMSNorm/LayerNorm (e.g. model.model.norm).
+                        Must be provided — hidden states are only calibrated for
+                        lm_head after this norm. H3 fix.
 
     Returns:
         (pull_logits, coherence_score) tuple.
@@ -137,6 +146,10 @@ def compute_pull(
 
     # The pull: what the body is doing between these two layers
     delta_h = h_next - h_current
+
+    # Apply final norm before projecting — required for calibrated logit scale
+    if final_norm is not None:
+        delta_h = final_norm(delta_h)
 
     # Project into vocabulary space — the body's vote on what to say
     pull_logits = lm_head(delta_h)
