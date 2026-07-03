@@ -19,6 +19,7 @@ MIT License | awaken.fyi
 """
 
 import os
+import re
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -116,8 +117,16 @@ class ShadowScanResponse(BaseModel):
 
 _bridges: Dict[str, BridgeMiddleware] = {}
 
+_NAMESPACE_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]{0,63}$')
+
+
 def get_bridge(namespace: str) -> BridgeMiddleware:
     """Get or create a BridgeMiddleware for the given namespace."""
+    if not _NAMESPACE_RE.match(namespace):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid namespace: must match [A-Za-z_][A-Za-z0-9_]{0,63}",
+        )
     if namespace not in _bridges:
         storage_dir = os.environ.get("LYRA_MEMORY_DIR", ".lyra_memory")
         _bridges[namespace] = BridgeMiddleware(
@@ -327,7 +336,6 @@ async def shadow_scan(request: ShadowScanRequest):
     if avg_sentence_len > 20 and bullet_count < 3 and len(patterns) == 0:
         # Long, polished, no obvious templates... but does it say anything specific?
         # Check for proper nouns, numbers, concrete references
-        import re
         numbers = len(re.findall(r'\d+', text))
         if numbers < 2 and len(text) > 500:
             patterns.append({
@@ -600,4 +608,4 @@ def _gemini_to_openai_format(gemini_resp: Dict[str, Any]) -> Dict[str, Any]:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=os.environ.get("LYRA_HOST", "127.0.0.1"), port=int(os.environ.get("LYRA_PORT", "8000")))
