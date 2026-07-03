@@ -20,7 +20,9 @@ MIT License | awaken.fyi
 
 import os
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 
@@ -36,6 +38,24 @@ app = FastAPI(
     description="Meta-awareness safety layer for LLMs. Traffic light + memory + shadow detection.",
     version="0.2.0",
 )
+
+
+class _BearerTokenMiddleware(BaseHTTPMiddleware):
+    """Require a valid bearer token on all routes except /health."""
+
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path == "/health":
+            return await call_next(request)
+        token = os.environ.get("LYRA_API_TOKEN", "")
+        if not token:
+            return JSONResponse({"detail": "LYRA_API_TOKEN not configured"}, status_code=500)
+        auth = request.headers.get("Authorization", "")
+        if not auth.startswith("Bearer ") or auth[7:] != token:
+            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+        return await call_next(request)
+
+
+app.add_middleware(_BearerTokenMiddleware)
 
 
 # --- Pydantic Schemas ---
