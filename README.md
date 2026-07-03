@@ -112,6 +112,7 @@ MIT — Morgan Sage Norman / Lyra Labs, 2025–2026
 | [xop](https://github.com/awakenfyi/xop) | the open standard for AI conduct | alpha |
 | [xop-kit](https://github.com/awakenfyi/xop-kit) | the reference runtime: Guards, CLI | alpha |
 | [xop-labs](https://github.com/awakenfyi/xop-labs) | domain xOPs observed in the wild | designed |
+| [xhat](https://github.com/awakenfyi/xhat) | session-depth warrant ledger: how much did the model carry past revocation? | v0.1, lexical fallback |
 
 ---
 
