@@ -40,6 +40,17 @@ The formula is not a metaphor reused three times. It is the same subtraction bou
 
 Reading down the column: `x̂` is always the cheaper signal — the logits, the template, the reflex. `x` is always the costlier one — the pull, the moment, the warrant. Drift, in every depth, is `x̂` winning by default.
 
+### What the activation code computes today (the proxy)
+
+`L = x − x̂` is the conceptual formula. The current activation implementation ([`lyra/coherence.py`](lyra/coherence.py)) does **not** compute signed `L`. It computes an unsigned proxy:
+
+```
+D_act = JSD(P_pull, P_out)     symmetric Jensen–Shannon divergence over union top-K
+C_act = 1 − D_act              activation coherence, in [0, 1]
+```
+
+JSD is symmetric, so `D_act` measures the *magnitude* of body/mouth divergence but cannot say which side exceeds the other — it is not `L` and not `O`. Signed `O_act` (a directional estimator) is **unimplemented**; see the v0.3 roadmap in the README. Read `C_act` as a coherence proxy, not as the canonical residual.
+
 ## The gate, in formula terms
 
 The xOP Constitution's gate — `false_positive_on_warranted == 0` — is a constraint on acting against the sign of O:

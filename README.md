@@ -78,11 +78,11 @@ The bridge maintains per-namespace memory and injects a compact context block (�
 
 | Component | Status |
 |---|---|
-| Coherence metric (Top-K JSD, union top-K) | working code — self-scored, no independent benchmark |
+| Coherence metric — `C_act = 1 − D_act`, `D_act = JSD(P_pull, P_out)`, union top-K (unsigned proxy, **not** signed `L`; see [FORMULA.md](FORMULA.md)) | working code — self-scored, no independent benchmark |
 | Drift memory + atomic writes | working code |
 | Generation loop (temperature + RMSNorm fixes) | working code |
 | `pip install lyra-ai` | **not on PyPI — source install only** |
-| CI | none yet |
+| CI | GitHub Actions on every push/PR — CPU-only `pytest tests/` ([ci.yml](.github/workflows/ci.yml)) |
 | Bridge experiment | pre-registered — blocked on blind gold labels |
 
 ## The bridge experiment

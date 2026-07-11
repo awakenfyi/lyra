@@ -46,6 +46,10 @@ dev = [
     "pytest>=7.0.0",
     "build>=1.0.0",
     "twine>=4.0.0",
+    # API security tests (tests/test_api_auth.py) import the FastAPI app;
+    # keep these in dev so CI collects and runs them.
+    "fastapi>=0.100.0",
+    "httpx>=0.24.0",
 ]
 all = [
     "lyra-ai[bridge,api,mcp]",
