@@ -185,6 +185,10 @@ def test_topk_union_includes_pull_tokens():
 
     out_logits = torch.zeros(vocab)
     out_logits[999] = 100.0
+    # Break the tie deterministically: all-zero logits let topk pick token 0
+    # arbitrarily among the ties. Push token 0 to the bottom so it is
+    # guaranteed absent from the mouth's top-K regardless of tie ordering.
+    out_logits[0] = -100.0
 
     # Mouth-only top-K: token 0 (pull's choice) is invisible
     _, mouth_top = torch.topk(out_logits, k)

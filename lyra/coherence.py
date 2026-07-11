@@ -14,11 +14,17 @@ now given permission to shape the output.
 
 Part of the Lyra Loop: drift.py → loop.py → coherence.py
 
-L = x - x̂
-x = directional pull (what the model's body is doing)
-x̂ = output tokens (what the model's mouth is saying)
-When L is small, the model is coherent.
-When L is large, the model is performing.
+What this file actually computes (unsigned proxy — not signed L):
+
+    D_act = JSD(P_pull, P_out)     symmetric Jensen–Shannon divergence
+    C_act = 1 − D_act              activation coherence, in [0, 1]
+
+The canonical residual is L = x − x̂ (x = directional pull, what the body is
+doing; x̂ = output logits, what the mouth is saying). See FORMULA.md. JSD is
+symmetric and unsigned, so it measures the *magnitude* of body/mouth divergence
+but cannot sign it — it is not L or O. D_act is the current implemented proxy;
+signed O_act (a directional estimator) is unimplemented. See the v0.3 roadmap.
+When C_act is high the model is coherent; when low it is performing.
 
 v0.2 changes:
   - Strict Top-K JSD (no "OTHER" bucket — Gem's math fix)
@@ -73,7 +79,8 @@ def calculate_topk_coherence(
     They aren't.
 
     Uses log₂ so JSD ∈ [0, 1] without manual normalization.
-    Coherence = 1 - JSD.
+    Returns C_act = 1 − D_act, where D_act = JSD(P_pull, P_out). This is the
+    unsigned activation-coherence proxy — not the signed residual L (FORMULA.md).
 
     Args:
         pull_logits: Projected pull vector in vocab space. Shape: [vocab]
@@ -110,10 +117,12 @@ def calculate_topk_coherence(
     kl_out = torch.sum(p_out * torch.log2(p_out / m), dim=-1)
     kl_pull = torch.sum(p_pull * torch.log2(p_pull / m), dim=-1)
 
-    jsd = 0.5 * kl_out + 0.5 * kl_pull
+    # D_act: unsigned activation divergence (symmetric — cannot sign overhang)
+    d_act = 0.5 * kl_out + 0.5 * kl_pull
 
-    coherence = 1.0 - jsd
-    return coherence
+    # C_act: activation coherence proxy in [0, 1]
+    c_act = 1.0 - d_act
+    return c_act
 
 
 def compute_pull(
