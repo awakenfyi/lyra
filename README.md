@@ -2,6 +2,8 @@
 
 *Coherence-guided inference for language models. Research code, alpha.*
 
+**Wrong door?** Re-teaching your AI the same correction every chat → [the Judgment Ledger](https://github.com/awakenfyi/xop-labs/tree/main/in-the-wild/reusable-judgment) · scan an output before it ships → [xop-kit](https://github.com/awakenfyi/xop-kit) · the conduct standard → [xop](https://github.com/awakenfyi/xop) · this repo is the theory underneath
+
 **`L = x − x̂`** — one subtraction. `x` is the model's internal directional pull (what the layers are doing); `x̂` is the output logits (what the mouth is about to say). The residual is what the model's body wants that its output isn't delivering — or the gap where output has outlived internal signal. Full definition, sign convention, and three-depth binding table: **[FORMULA.md](FORMULA.md)**.
 
 ---
