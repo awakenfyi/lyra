@@ -44,7 +44,7 @@ evidence may eventually connect to — or fail to.
 - The test:
   [Pilot 000 preregistration](https://github.com/awakenfyi/xop-labs/blob/main/in-the-wild/reusable-judgment/pilot-000-paper/PREREGISTRATION.md)
 - The proposal in the standard:
-  [XEP-0002](https://github.com/awakenfyi/xop/blob/main/proposals/XEP-0002-reusable-judgment.md)
+  [XEP-0004](https://github.com/awakenfyi/xop/blob/main/proposals/XEP-0004-reusable-judgment.md)
 
 Status, everywhere it appears: **DESIGNED. Under test. No efficiency claim
 exists yet.**
@@ -57,3 +57,7 @@ holds the lineage in prose: why the gap is worth closing
 ([OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)), and where the measurement
 discipline was borrowed from ([RELATED-WORK.md](RELATED-WORK.md), verbatim
 from the pilot tree).
+
+*Internal references inside RELATED-WORK.md (LYRA_ON_FORMULAS.md,
+LABEL_PROTOCOL.md, pilot-000-paper/) resolve against the xop-labs pilot
+tree — the file is a verbatim copy.*

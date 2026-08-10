@@ -8,7 +8,7 @@ A pasted ledger is also just more text, and structured text can help for
 reasons that have nothing to do with judgment being reusable — priming
 carefulness, signaling that the operator has standards, breaking the wall of
 prose. **Settled by:** Pilot 000's placebo contrast (arm D vs arm E, a
-structure-matched ledger within ±10% tokens whose rules govern nothing the
+structure-matched ledger within the preregistered tolerance whose rules govern nothing the
 cards test). If D ≈ E, the ledger is a formatting effect.
 
 ## 2. Is the format load-bearing, or only the substance?
