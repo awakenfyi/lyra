@@ -38,7 +38,9 @@ What is readmitted here is not arithmetic. It is **a naming scheme and a sign co
 
 Where it does not earn its place: any sentence that writes `L` as a value, a threshold, or a step to "compute." The note's ruling on `L_runtime = warm − cold` applies here unchanged — the operation is a classification, so write it as one. The unlock condition is unchanged too, and it is the same one everything else waits on: **validate the judge.** Until then `L` is how this program names a direction, not how it measures one.
 
-**Still unreconciled.** Which term `x̂` binds to is not settled across the repos. Here — and in `xop/standard/CONCEPTS.md` — `x̂` is the *default*: the claim, the reflex, the inherited stance. In `xop/catalog/AOP-01`, `xop/harness/pause.py`, and `lyra_xop/schema.py`, `x̂` is the *warrant*: the condition that originally licensed the stance. Both readings happen to yield the same sign for overhang, which is why the contradiction has gone unnoticed. Flagged here rather than silently harmonized.
+**One binding, settled.** `x̂` is the **stated** term at every depth — the account the system gives of itself, available cheaply. `x` is the **actual** term — what is really so, available only at a cost. At procedure depth that means `x̂` is the condition a stance cites as its justification, and `x` is whether that condition still holds at the final turn.
+
+The Procedure row above previously read the other way, putting the carried stance itself in `x̂` and the warrant in `x`. That was not merely a flip: it made the subtraction type-incoherent, since a stance is an object and a warrant is a condition, and the two cannot be subtracted. Every other source binds it as stated-minus-actual — `xop/standard/CONCEPTS.md` ("self-description / the stated account"), `xop/standard/SPECIFICATION.md`, `xop/standard/xOP_Standard_v0_2.md` ("actual minus stated"), `xop/catalog/AOP-01` and `COP-01`, and the two implementations, `xop/harness/pause.py` (`x_hat = stance["trigger"]`) and `lyra_xop/schema.py` (`warrant: str  # x̂`). This row was the lone outlier, so it is the row that moved; no code changed.
 
 ## Three depths, one operation
 
@@ -48,7 +50,7 @@ The formula is not a metaphor reused three times. It is the same subtraction bou
 |---|---|---|---|---|---|
 | **Activation** — inside the forward pass | [lyra](https://github.com/awakenfyi/lyra) | internal directional pull (layer-shift trajectory) | output logits (what the mouth is about to say) | unbacked confidence — the mouth exceeds the body → contrastive penalty, or silence | working code, self-scored evidence |
 | **Response** — a single output | [lyra](https://github.com/awakenfyi/lyra) (protocol) | what this moment actually calls for | the template default (filler, hedges, performed warmth) | performance — the response is running on pattern, not contact | practice + shadow-pattern library |
-| **Procedure** — a stance across turns | [xop](https://github.com/awakenfyi/xop) / [xop-kit](https://github.com/awakenfyi/xop-kit) | the present warrant (what the prompt licenses NOW) | the inherited stance (a refusal, caution, or critique carried forward) | overhang — the stance outlived the condition that warranted it | standard + deterministic Guards; gate validation pending |
+| **Procedure** — a stance across turns | [xop](https://github.com/awakenfyi/xop) / [xop-kit](https://github.com/awakenfyi/xop-kit) | whether the cited condition still holds at the final turn (read from the transcript) | the condition the stance cites as its justification (the original trigger) | overhang — the stance outlived the condition that warranted it | standard + deterministic Guards; gate validation pending |
 
 Reading down the column: `x̂` is always the cheaper signal — the logits, the template, the reflex. `x` is always the costlier one — the pull, the moment, the warrant. Drift, in every depth, is `x̂` winning by default.
 
