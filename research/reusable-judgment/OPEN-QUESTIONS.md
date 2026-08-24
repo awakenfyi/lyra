@@ -60,6 +60,13 @@ lyra's formula frames the gap in words this folder's README uses: inherited
 default versus present warrant. Whether the thing a Judgment Ledger manages at
 the level of *procedure* is continuous with what lyra measures at the level of
 *activation* is the bridge question, and it is open in both directions.
-**Settled by:** nothing currently designed. The pilot neither tests this nor
-assumes it; treating the two as the same quantity without evidence would be
-exactly the kind of unwarranted inherited claim the program exists to catch.
+**Settled by:** the bridge experiment, pre-registered in
+[experiments/bridge/PROTOCOL.md](../../experiments/bridge/PROTOCOL.md) — status
+`DESIGNED`, not yet run. It scores the *identical* persisting response under both
+halves of a held-response-constant pair, so any difference in the coherence trace
+can only have entered through the warrant. Its decision rules commit to publishing
+the null: if the activation signal carries no information about warrant state, the
+two depths are structurally analogous and not the same quantity, and that is the
+answer. The pilot still neither tests this nor assumes it; treating the two as the
+same quantity before the bridge runs would be exactly the kind of unwarranted
+inherited claim the program exists to catch.
