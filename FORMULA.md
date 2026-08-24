@@ -28,6 +28,18 @@ O < 0    what's present exceeds the default     → dropped stance / missing res
 
 An earlier draft had this flipped and it confused the entire system. **O positive means the reflex outlived its warrant.** UI and prose report **O** (the readable quantity); **L** is the canonical residual, exposed as `L = −O`.
 
+## Why this notation survived its own retirement
+
+Concede the boundary first: **nothing on this page is computed.** `L` is not evaluated at any depth in this repo, and no decision anywhere reads its value.
+
+The internal note `LYRA_ON_FORMULAS.md` retired `L = x − x̂` by name. Its charge: the equation "reads like a measurement, but in most domains `x̂` is unobservable, so the equation was a pointer dressed as arithmetic." That charge is correct and this page does not contest it — the activation section below concedes exactly the same thing in the one place the project has real numbers, where `D_act` is an unsigned JSD, is not `L`, and signed `O_act` is unimplemented.
+
+What is readmitted here is not arithmetic. It is **a naming scheme and a sign convention**: one pair of names (`x` present, `x̂` default) and one locked direction (`O > 0` means the default outlived what's present), shared across three depths that would otherwise each invent private vocabulary for the same asymmetry. That is a glossary with a minus sign in it. It earns its place on two grounds — it fixes the direction an earlier draft had backwards, which confused the whole system; and it is what lets the bridge claim be stated as a falsifiable prediction instead of an analogy.
+
+Where it does not earn its place: any sentence that writes `L` as a value, a threshold, or a step to "compute." The note's ruling on `L_runtime = warm − cold` applies here unchanged — the operation is a classification, so write it as one. The unlock condition is unchanged too, and it is the same one everything else waits on: **validate the judge.** Until then `L` is how this program names a direction, not how it measures one.
+
+**Still unreconciled.** Which term `x̂` binds to is not settled across the repos. Here — and in `xop/standard/CONCEPTS.md` — `x̂` is the *default*: the claim, the reflex, the inherited stance. In `xop/catalog/AOP-01`, `xop/harness/pause.py`, and `lyra_xop/schema.py`, `x̂` is the *warrant*: the condition that originally licensed the stance. Both readings happen to yield the same sign for overhang, which is why the contradiction has gone unnoticed. Flagged here rather than silently harmonized.
+
 ## Three depths, one operation
 
 The formula is not a metaphor reused three times. It is the same subtraction bound to different observables:
